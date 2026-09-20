@@ -1,0 +1,13 @@
+# 运行数据与敏感配置（切勿提交）
+.env
+config/
+data/
+downloads/
+logs/
+openlist/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
