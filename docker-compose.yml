@@ -1,0 +1,40 @@
+# TG2Cloud NAS 精简版 —— 仅 Bot（OpenList 单独部署，见 docker-compose.openlist.yml）
+services:
+  tg2cloud-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tg2cloud-nas-bot:latest
+    container_name: tg2cloud-bot
+    env_file:
+      - .env
+    environment:
+      DATA_DIR: /data
+      DOWNLOAD_DIR: /downloads
+      LOG_DIR: /logs
+      RCLONE_CONFIG_PATH: /config/rclone/rclone.conf
+    # 非 root 运行，与镜像内 UID/GID 保持一致
+    user: "10001:10001"
+    volumes:
+      - ./data:/data              # SQLite 队列与心跳
+      - ./downloads:/downloads    # 普通模式的落盘临时目录
+      - ./logs:/logs              # 日志
+      - ./config:/config          # 自动生成的 rclone.conf
+    # 若 OpenList 运行在 NAS 宿主机（而非容器网络内），可通过该别名访问
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    restart: unless-stopped
+    stop_grace_period: 45s
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.healthcheck"]
+      interval: 30s
+      timeout: 8s
+      retries: 3
+      start_period: 45s
