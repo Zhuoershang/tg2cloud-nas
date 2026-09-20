@@ -5,6 +5,7 @@ import math
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 
 def _decode_b64(name: str, *, required: bool = True, default: str = "") -> str:
@@ -73,6 +74,8 @@ class Settings:
     storage_backend: str = "clouddrive2"
     destination_label: str = "CloudDrive2"
     rclone_remote_name: str = "cd2"
+    # 仅作用于 Telegram 连接与 TG 文件下载；None 表示直连（不使用代理）。
+    telegram_proxy: dict | None = None
 
     @classmethod
     def from_env(cls, *, create_directories: bool = True) -> Settings:
@@ -118,6 +121,28 @@ class Settings:
         if rclone_remote_name != default_remote_name:
             raise RuntimeError("rclone 远端名称与存储后端不匹配")
 
+        # Telegram 专用代理：只影响 Telethon 连接与 TG 文件下载，不影响 rclone。
+        # 注意：不要把代理写进 HTTP_PROXY/HTTPS_PROXY，否则 rclone 也会走代理。
+        proxy_raw = os.getenv("TG_PROXY_URL", "").strip()
+        telegram_proxy = None
+        if proxy_raw:
+            parsed = urlparse(proxy_raw)
+            proxy_scheme = parsed.scheme.lower()
+            if proxy_scheme not in ("http", "socks5", "socks4"):
+                raise RuntimeError("TG_PROXY_URL 仅支持 http / socks5 / socks4")
+            if not parsed.hostname or not parsed.port:
+                raise RuntimeError("TG_PROXY_URL 必须包含主机与端口")
+            telegram_proxy = {
+                "proxy_type": proxy_scheme,
+                "addr": parsed.hostname,
+                "port": parsed.port,
+                "rdns": True,
+            }
+            if parsed.username:
+                telegram_proxy["username"] = unquote(parsed.username)
+            if parsed.password:
+                telegram_proxy["password"] = unquote(parsed.password)
+
         settings = cls(
             api_id=api_id,
             api_hash=_decode_b64("TELEGRAM_API_HASH_B64"),
@@ -158,6 +183,7 @@ class Settings:
             storage_backend=storage_backend,
             destination_label=destination_label,
             rclone_remote_name=rclone_remote_name,
+            telegram_proxy=telegram_proxy,
         )
         if not (
             0
