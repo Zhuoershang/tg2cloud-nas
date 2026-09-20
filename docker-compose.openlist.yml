@@ -1,0 +1,23 @@
+# OpenList —— 独立部署（与 Bot 完全解耦，可单独更新/重启）
+# 用法: docker compose -f docker-compose.openlist.yml up -d
+services:
+  openlist:
+    # 上游已验证的固定摘要（如需跟随最新版，可改用 :latest 或具体版本 tag）
+    image: openlistteam/openlist:latest   # 原项目固定摘要: sha256:c555c6e1c8af2aead38ed12ec761ac077fdf046d19cf033414be8e056aec6b64
+    container_name: openlist
+    user: "1001:1001"
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      UMASK: "022"
+      OPENLIST_ADMIN_PASSWORD: ${OPENLIST_ADMIN_PASSWORD:-}
+    volumes:
+      - ./openlist/data:/opt/openlist/data
+    ports:
+      # 局域网访问管理页与 WebDAV（:5244 管理页，WebDAV 端点为 /dav）
+      # 如需仅本机访问可改为 "127.0.0.1:5244:5244"
+      - "5244:5244"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
