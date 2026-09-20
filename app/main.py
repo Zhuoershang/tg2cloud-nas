@@ -61,6 +61,7 @@ class TransferService(CommandMixin):
             connection_retries=10,
             retry_delay=3,
             auto_reconnect=True,
+            proxy=settings.telegram_proxy,
         )
         self._source = source
         self.rclone = destination or RcloneClient(settings)
